@@ -84,7 +84,7 @@ RSpec.describe PostsController, type: :controller do
       it 'creates a new Post' do
         expect do
           post :create, params: { post: valid_attributes }, session: valid_session
-        end.to change(Post, :count).by(2)
+        end.to change(Post, :count).by(1)
       end
 
       it 'redirects to the created post' do
