@@ -1,12 +1,12 @@
 version: 2.1
 
-orbs:
+orbs:   # Reusable modules of config logic
   ruby: circleci/ruby@1.1.0
   node: circleci/node@2
 
-workflows:
+workflows:    # Collection of jobs orchestrated to run in a specific order
   version: 2
-  build_and_test:
+  build_test_deploy:
     jobs:
       - build
       - test:
@@ -16,11 +16,15 @@ workflows:
           type: approval
           requires:
             - test
+      - deploy:
+          requires:
+            - approve_deploy
 
-jobs:
+jobs: # Collection of commands needed to accomplish a specific task
   build:
-    docker:
+    docker:   # Supported environments include Windows, macOS, Linux, and Docker
       - image: cimg/ruby:2.7-node   # Convenience images optimized for performance
+    resource_class: xlarge    # Options range from small to 2xl+
     steps:
       - checkout
       - ruby/install-deps
@@ -28,10 +32,10 @@ jobs:
           pkg-manager: yarn
           cache-key: "yarn.lock"
   test:
-    parallelism: 3
+    parallelism: 3    # Split tests across multiple nodes
     docker:
       - image: cimg/ruby:2.7-node
-      - image: circleci/postgres:9.5-alpine
+      - image: circleci/postgres:9.5-alpine   # Load sidecar images to extend execution environment
         environment:
           POSTGRES_USER: circleci-demo-ruby
           POSTGRES_DB: rails_blog_test
@@ -55,7 +59,6 @@ jobs:
       - run:
           name: Database setup
           command: bundle exec rails db:schema:load --trace
-      # Run rspec in parallel
       - ruby/rspec-test
       - ruby/rubocop-check
   deploy:
