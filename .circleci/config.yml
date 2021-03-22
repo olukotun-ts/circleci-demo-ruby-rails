@@ -16,10 +16,7 @@ commands:   # Define reusable commands
             echo "BUILD_TIME: $BUILD_TIME"
             echo "BUILD_ID: $BUILD_ID"
 
-            echo $BUILD_ID > BUILD_ID.env
-
-            ls -al .
-            ls -al temp/      
+            echo $BUILD_ID > BUILD_ID.env  
       - persist_to_workspace:
           root: /
           paths:
