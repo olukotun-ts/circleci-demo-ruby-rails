@@ -1,8 +1,42 @@
 version: 2.1
 
-orbs:   # Reusable modules of config logic
+orbs:   # Import reusable modules of config logic
   ruby: circleci/ruby@1.1.0
   node: circleci/node@2
+
+commands:   # Define reusable commands
+  set-build-id:
+    description: "Create and write BUILD_ID to shared workspace"
+    steps:
+      - run:
+          name: Create BUILD_ID
+          command: |
+            BUILD_TIME=$(date +'%m%d%Y-%H%M%S')
+            BUILD_ID=$(echo "${CIRCLE_BRANCH}-${CIRCLE_SHA1}-${BUILD_TIME}")
+            echo "BUILD_TIME: $BUILD_TIME"
+            echo "BUILD_ID: $BUILD_ID"
+
+            mkdir -p temp
+            echo $BUILD_ID > temp/BUILD_ID.env
+
+            ls -al .
+            ls -al temp/      
+      - persist_to_workspace:
+          root: temp
+          paths:
+            - BUILD_ID.env
+
+  get-build-id:
+    description: "Read BUILD_ID from workspace"
+    steps:
+      - attach_workspace:
+          at: /temp
+      - run:
+          name: Read BUILD_ID
+          command: |
+            BUILD_ID=$(<temp/BUILD_ID.env)
+
+            echo "BUILD_ID: $BUILD_ID"
 
 workflows:    # Collection of jobs orchestrated to run in a specific order
   version: 2
@@ -29,6 +63,7 @@ jobs: # Collection of commands needed to accomplish a specific task
     resource_class: xlarge    
     steps:
       - checkout
+      - get-build-id
       - ruby/install-deps
       - node/install-packages:
           pkg-manager: yarn
@@ -78,3 +113,4 @@ jobs: # Collection of commands needed to accomplish a specific task
       - image: cimg/ruby:2.7-node
     steps:
       - checkout
+      - set-build-id
