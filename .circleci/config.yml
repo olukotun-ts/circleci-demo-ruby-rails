@@ -29,6 +29,7 @@ commands:   # Define reusable commands
   get-build-id:
     description: "Read BUILD_ID from workspace"
     steps:
+      - run: mkdir -p temp
       - attach_workspace:
           at: /temp
       - run:
