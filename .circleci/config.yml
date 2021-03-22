@@ -31,7 +31,7 @@ commands:   # Define reusable commands
       - run:
           name: Read BUILD_ID
           command: |
-            export BUILD_ID=$(<BUILD_ID.env)
+            echo "export BUILD_ID=$(<BUILD_ID.env)" >> $BASH_ENV
             echo "BUILD_ID: $BUILD_ID"
 
 workflows:    # Collection of jobs orchestrated to run in a specific order
