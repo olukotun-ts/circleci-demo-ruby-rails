@@ -24,9 +24,9 @@ workflows:    # Collection of jobs orchestrated to run in a specific order
 
 jobs: # Collection of commands needed to accomplish a specific task
   build:
-    docker:   # Supported environments include Windows, macOS, Linux, and Docker
-      - image: cimg/ruby:2.7-node   # Convenience images optimized for performance
-    resource_class: xlarge    # Options range from small to 2xl+
+    docker:   
+      - image: cimg/ruby:2.7-node 
+    resource_class: xlarge    
     steps:
       - checkout
       - ruby/install-deps
@@ -34,15 +34,15 @@ jobs: # Collection of commands needed to accomplish a specific task
           pkg-manager: yarn
           cache-key: "yarn.lock"
   test:
-    parallelism: 5    # Split tests across multiple nodes
-    docker:
-      - image: cimg/ruby:2.7-node
+    docker:   # Supported environments include Windows, macOS, Linux, and Docker
+      - image: cimg/ruby:2.7-node   # Convenience images optimized for performance
       - image: circleci/postgres:9.5-alpine   # Load sidecar images to extend execution environment
         environment:
           POSTGRES_USER: circleci-demo-ruby
           POSTGRES_DB: rails_blog_test
           POSTGRES_PASSWORD: ""
-    resource_class: xlarge
+    resource_class: xlarge  # Options range from small to 2xlarge+
+    parallelism: 5  # Split tests across multiple nodes
     environment:
       BUNDLE_JOBS: "3"
       BUNDLE_RETRY: "3"
@@ -55,7 +55,7 @@ jobs: # Collection of commands needed to accomplish a specific task
       - ruby/install-deps
       - node/install-packages:
           pkg-manager: yarn
-          cache-key: "yarn.lock"
+          cache-key: "yarn.lock"  # Caching dependencies speeds up builds
       - run:
           name: Wait for DB
           command: dockerize -wait tcp://localhost:5432 -timeout 1m
