@@ -55,13 +55,13 @@ workflows:    # Collection of jobs orchestrated to run in a specific order
   convert_jenkins:
     jobs:
       - jenkins-build
-      - deploy:
+      - jenkins-deploy:
           requires:
             - jenkins-build
       - approve-promote:
           type: approval
           requires:
-            - deploy
+            - jenkins-deploy
       - promote:
           requires:
             - approve-promote
@@ -150,7 +150,7 @@ jobs: # Collection of commands needed to accomplish a specific task
       - aws-cli/setup
       - run: chmod -R +x $HOME/project/.circleci/scripts/
       - run: $HOME/project/.circleci/scripts/build.sh
-  deploy:
+  jenkins-deploy:
     machine: true
     steps:
       - checkout
