@@ -84,6 +84,10 @@ jobs: # Collection of commands needed to accomplish a specific task
     steps:
       - checkout
       - get-build-id
+      - run:
+          name: Verify env vars
+          command: |
+            echo "BUILD_ID: $BUILD_ID"
       - ruby/install-deps
       - node/install-packages:
           pkg-manager: yarn
