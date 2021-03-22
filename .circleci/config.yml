@@ -30,7 +30,7 @@ commands:   # Define reusable commands
       - run:
           name: Read BUILD_ID
           command: |
-            BUILD_ID=$(<BUILD_ID.env)
+            export BUILD_ID=$(<BUILD_ID.env)
             echo "BUILD_ID: $BUILD_ID"
 
 workflows:    # Collection of jobs orchestrated to run in a specific order
@@ -59,9 +59,6 @@ jobs: # Collection of commands needed to accomplish a specific task
     steps:
       - checkout
       - get-build-id
-      - run:
-          command: |
-            echo "BUILD_ID: $BUILD_ID"
       - ruby/install-deps
       - node/install-packages:
           pkg-manager: yarn
