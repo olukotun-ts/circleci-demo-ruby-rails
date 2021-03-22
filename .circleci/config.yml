@@ -16,22 +16,20 @@ commands:   # Define reusable commands
             echo "BUILD_TIME: $BUILD_TIME"
             echo "BUILD_ID: $BUILD_ID"
 
-            mkdir -p temp
-            echo $BUILD_ID > temp/BUILD_ID.env
+            echo $BUILD_ID > BUILD_ID.env
 
             ls -al .
             ls -al temp/      
       - persist_to_workspace:
-          root: temp
+          root: /
           paths:
             - BUILD_ID.env
 
   get-build-id:
     description: "Read BUILD_ID from workspace"
     steps:
-      - run: mkdir -p temp
       - attach_workspace:
-          at: /temp
+          at: /
       - run:
           name: Read BUILD_ID
           command: |
