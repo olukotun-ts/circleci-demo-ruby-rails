@@ -59,7 +59,9 @@ jobs: # Collection of commands needed to accomplish a specific task
     steps:
       - checkout
       - get-build-id
-      - run: echo "BUILD_ID: $BUILD_ID"
+      - run:
+          command: |
+            echo "BUILD_ID: $BUILD_ID"
       - ruby/install-deps
       - node/install-packages:
           pkg-manager: yarn
