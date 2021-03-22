@@ -137,6 +137,10 @@ jobs: # Collection of commands needed to accomplish a specific task
 
   jenkins-build:
     machine: true
+    environment:
+      WEBPACK_BUILD_DIR: public
+      SITE_NAME: devops
+      NVM_DIR: /opt/circleci/.nvm
     steps:
       - checkout
       - aws-cli/setup
