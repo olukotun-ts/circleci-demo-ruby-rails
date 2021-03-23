@@ -149,17 +149,17 @@ jobs: # Collection of commands needed to accomplish a specific task
     steps:
       - checkout
       - aws-cli/setup
-      - run:
-          name: Build app
-          command: |
-            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-            nvm install v12.13.1 && nvm alias default v12.13.1
+      # - run:
+      #     name: Build app
+      #     command: |
+      #       [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+      #       nvm install v12.13.1 && nvm alias default v12.13.1
 
-            rm -rf node_modules
-            npm run pre-install
-            npm rebuild node-sass
-            npm install
-            npm run build
+      #       rm -rf node_modules
+      #       npm run pre-install
+      #       npm rebuild node-sass
+      #       npm install
+      #       npm run build
       - set-build-id
       - run:
           command: |
