@@ -33,7 +33,7 @@ commands:   # Define reusable commands
           name: Get BUILD_ID
           command: |
             echo "export BUILD_ID=$(<BUILD_ID.env)" >> $BASH_ENV
-            echo "BUILD_ID: $BUILD_ID"
+            echo "BUILD_ID: $(<BUILD_ID.env)"
 
 workflows:    # Collection of jobs orchestrated to run in a specific order
   version: 2
@@ -162,6 +162,7 @@ jobs: # Collection of commands needed to accomplish a specific task
       #       npm run build
       - set-build-id
       # - run:
+        #   name: Push to AWS S3
       #     command: |
       #       BUILD_OBJ=$(echo "${BUILD_ID}.zip")
       #       id='{"application":"'"${CIRCLE_PROJECT_REPONAME}"'","build":"'"${BUILD_ID}"'","status":"SUCCESS"}'
@@ -185,28 +186,39 @@ jobs: # Collection of commands needed to accomplish a specific task
       - checkout
       - aws-cli/setup
       - get-build-id
-      - run:
-          command: |
-            CCHOME_BUILD_ID=$BUILD_ID
-            echo "CCHOME_BUILD_ID: $CCHOME_BUILD_ID"
-            .circleci/scripts/myVault.sh DEV
-            aws s3 cp s3://adobe-cchome-build-ue1/cchome-cchome/trailhead-${SITE_NAME}/${CCHOME_BUILD_ID}.zip .
-
-            set -x
-
-            rm -rf ${WEBPACK_BUILD_DIR}
-            unzip ${CCHOME_BUILD_ID}.zip
-            rm -rf *.zip
-            cd ${WEBPACK_BUILD_DIR}
-            # Upload code to Cloudfront S3 origin with Cache-Control headers
-            aws s3 sync . s3://adobe-cchome-${SITE_NAME}-ue1/static/
+      # - run:
+      #     name: Deploy
+      #     command: |
+      #       CCHOME_BUILD_ID=$BUILD_ID
+      #       .circleci/scripts/myVault.sh DEV
+      #       aws s3 cp s3://adobe-cchome-build-ue1/cchome-cchome/trailhead-${SITE_NAME}/${CCHOME_BUILD_ID}.zip .
+# 
+      #       rm -rf ${WEBPACK_BUILD_DIR}
+      #       unzip ${CCHOME_BUILD_ID}.zip
+      #       rm -rf *.zip
+      #       cd ${WEBPACK_BUILD_DIR}
+      #       aws s3 sync . s3://adobe-cchome-${SITE_NAME}-ue1/static/
   promote:
     machine: true
+    environment:
+      SITE_NAME: devops
+      SITE_TO_PROMOTE_TO: devops-stage
     steps:
       - checkout
       - aws-cli/setup
-      - run: chmod -R +x $HOME/project/.circleci/scripts/
-      - run: $HOME/project/.circleci/scripts/promote.sh
+      - get-build-id
+      - run:
+          name: Promote
+          command: |
+            CCHOME_BUILD_ID=$BUILD_ID
+
+            echo "CCHOME_BUILD_ID: $CCHOME_BUILD_ID"
+            echo "SITE_NAME: $SITE_NAME"
+
+            .circleci/scripts/myVault.sh DEV
+            aws s3 cp s3://adobe-cchome-build-ue1/cchome-cchome/trailhead-${SITE_NAME}/${CCHOME_BUILD_ID}.zip .
+            aws s3 cp ${CCHOME_BUILD_ID}.zip s3://adobe-cchome-build-ue1/cchome-cchome/trailhead-${SITE_TO_PROMOTE_TO}/
+            rm -rf ${CCHOME_BUILD_ID}.zip
   deploy-stage:
     machine: true
     steps:
