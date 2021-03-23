@@ -13,7 +13,7 @@ commands:   # Define reusable commands
           name: Create BUILD_ID
           command: |
             BUILD_TIME=$(date +'%m%d%Y-%H%M%S')
-            BUILD_ID=$(echo "{CIRCLE_PROJECT_REPONAME}-${CIRCLE_BRANCH}-${CIRCLE_SHA1}-${BUILD_TIME}")
+            BUILD_ID=$(echo "${CIRCLE_PROJECT_REPONAME}-${CIRCLE_BRANCH}-${CIRCLE_SHA1}-${BUILD_TIME}")
             echo "BUILD_TIME: $BUILD_TIME"
             echo "BUILD_ID: $BUILD_ID"
 
