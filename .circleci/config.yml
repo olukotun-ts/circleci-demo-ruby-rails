@@ -55,10 +55,10 @@ workflows:    # Collection of jobs orchestrated to run in a specific order
 
   convert_jenkins:
     jobs:
-      - jenkins-build
-      - jenkins-deploy:
-          requires:
-            - jenkins-build
+      # - jenkins-build
+      - jenkins-deploy
+          # requires:
+          #   - jenkins-build
       - approve-promote:
           type: approval
           requires:
@@ -149,22 +149,20 @@ jobs: # Collection of commands needed to accomplish a specific task
     steps:
       - checkout
       - aws-cli/setup
-      # - run:
-      #     name: Build app
-      #     command: |
-      #       [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-      #       nvm install v12.13.1 && nvm alias default v12.13.1
+      - run:
+          name: Build app
+          command: |
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+            nvm install v12.13.1 && nvm alias default v12.13.1
 
-      #       rm -rf node_modules
-      #       npm run pre-install
-      #       npm rebuild node-sass
-      #       npm install
-      #       npm run build
+            rm -rf node_modules
+            npm run pre-install
+            npm rebuild node-sass
+            npm install
+            npm run build
       - set-build-id
       - run:
           command: |
-            echo "BUILD_ID: $BUILD_ID"
-
             BUILD_OBJ=$(echo "${BUILD_ID}.zip")
             id='{"application":"'"${CIRCLE_PROJECT_REPONAME}"'","build":"'"${BUILD_ID}"'","status":"SUCCESS"}'
             echo $id > "${WEBPACK_BUILD_DIR}/build.json"
@@ -176,11 +174,32 @@ jobs: # Collection of commands needed to accomplish a specific task
             echo "CCHOME_BUILD_ID=${BUILD_ID}" > build.properties
   jenkins-deploy:
     machine: true
+    environment:
+      S3_CCHOME_CCHOME_CACHE_CONTROL_INDEX: 'public, max-age=900, must-revalidate'
+      S3_CCHOME_CCHOME_CACHE_CONTROL_STATIC: 'public, max-age=31536000, immutable'
+      S3_CCHOME_CCHOME_CACHE_CONTROL_JS: 'public, max-age=31536000, immutable'
+      S3_CCHOME_CCHOME_CACHE_CONTROL_CSS: 'public, max-age=31536000, immutable'
+      WEBPACK_BUILD_DIR: public
+      SITE_NAME: devops
     steps:
       - checkout
       - aws-cli/setup
-      - run: chmod -R +x $HOME/project/.circleci/scripts/
-      - run: $HOME/project/.circleci/scripts/deploy.sh
+      - get-build-id
+      - run:
+          command: |
+            CCHOME_BUILD_ID=$BUILD_ID
+            echo "CCHOME_BUILD_ID: $CCHOME_BUILD_ID"
+            .circleci/scripts/myVault.sh DEV
+            aws s3 cp s3://adobe-cchome-build-ue1/cchome-cchome/trailhead-${SITE_NAME}/${CCHOME_BUILD_ID}.zip .
+
+            set -x
+
+            rm -rf ${WEBPACK_BUILD_DIR}
+            unzip ${CCHOME_BUILD_ID}.zip
+            rm -rf *.zip
+            cd ${WEBPACK_BUILD_DIR}
+            # Upload code to Cloudfront S3 origin with Cache-Control headers
+            aws s3 sync . s3://adobe-cchome-${SITE_NAME}-ue1/static/
   promote:
     machine: true
     steps:
