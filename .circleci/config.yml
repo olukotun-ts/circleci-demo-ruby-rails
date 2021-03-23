@@ -13,10 +13,11 @@ commands:   # Define reusable commands
           name: Create BUILD_ID
           command: |
             BUILD_TIME=$(date +'%m%d%Y-%H%M%S')
-            BUILD_ID=$(echo "${CIRCLE_BRANCH}-${CIRCLE_SHA1}-${BUILD_TIME}")
+            BUILD_ID=$(echo "{CIRCLE_PROJECT_REPONAME}-${CIRCLE_BRANCH}-${CIRCLE_SHA1}-${BUILD_TIME}")
             echo "BUILD_TIME: $BUILD_TIME"
             echo "BUILD_ID: $BUILD_ID"
 
+            echo "export $BUILD_ID" >> $BASH_ENV
             echo $BUILD_ID > BUILD_ID.env  
       - persist_to_workspace:
           root: ./
@@ -148,8 +149,31 @@ jobs: # Collection of commands needed to accomplish a specific task
     steps:
       - checkout
       - aws-cli/setup
-      - run: chmod -R +x $HOME/project/.circleci/scripts/
-      - run: $HOME/project/.circleci/scripts/build.sh
+      - run:
+          name: Build app
+          command: |
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+            nvm install v12.13.1 && nvm alias default v12.13.1
+
+            rm -rf node_modules
+            npm run pre-install
+            npm rebuild node-sass
+            npm install
+            npm run build
+      - set-build-id
+      - run:
+          command: |
+            echo "BUILD_ID: $BUILD_ID"
+
+            BUILD_OBJ=$(echo "${BUILD_ID}.zip")
+            id='{"application":"'"${CIRCLE_PROJECT_REPONAME}"'","build":"'"${BUILD_ID}"'","status":"SUCCESS"}'
+            echo $id > "${WEBPACK_BUILD_DIR}/build.json"
+            zip -r ${BUILD_OBJ} ${WEBPACK_BUILD_DIR}/*
+
+            .circleci/scripts/myVault.sh DEV
+            aws s3 cp ${BUILD_OBJ} s3://adobe-cchome-build-ue1/cchome-cchome/trailhead-${SITE_NAME}/
+            rm -rf ${BUILD_OBJ}
+            echo "CCHOME_BUILD_ID=${BUILD_ID}" > build.properties
   jenkins-deploy:
     machine: true
     steps:
