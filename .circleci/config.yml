@@ -56,7 +56,7 @@ workflows:    # Collection of jobs orchestrated to run in a specific order
   convert_jenkins:
     jobs:
       - jenkins-build
-      - jenkins-deploy
+      - jenkins-deploy:
           requires:
             - jenkins-build
       - approve-promote:
