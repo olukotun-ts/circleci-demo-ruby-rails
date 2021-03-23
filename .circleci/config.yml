@@ -17,7 +17,7 @@ commands:   # Define reusable commands
             echo "BUILD_TIME: $BUILD_TIME"
             echo "BUILD_ID: $BUILD_ID"
 
-            echo "export $BUILD_ID" >> $BASH_ENV
+            echo "export BUILD_ID=$BUILD_ID" >> $BASH_ENV
             echo $BUILD_ID > BUILD_ID.env  
       - persist_to_workspace:
           root: ./
