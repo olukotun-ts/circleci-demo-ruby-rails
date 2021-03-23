@@ -14,16 +14,20 @@ commands:   # Define reusable commands
           command: |
             BUILD_TIME=$(date +'%m%d%Y-%H%M%S')
             BUILD_ID=$(echo "${CIRCLE_PROJECT_REPONAME}-${CIRCLE_BRANCH}-${CIRCLE_SHA1}-${BUILD_TIME}")
-            echo "BUILD_TIME: $BUILD_TIME"
-            echo "BUILD_ID: $BUILD_ID"
 
             echo "export BUILD_ID=$BUILD_ID" >> $BASH_ENV
-            echo $BUILD_ID > BUILD_ID.env  
+            echo "export CCHOME_BUILD_ID=$BUILD_ID" >> $BASH_ENV
+
+            echo $BUILD_ID > BUILD_ID.env 
+      - run:
+          name: Inspect IDs
+          command: |
+            echo "BUILD_ID: $BUILD_ID"
+            echo "CCHOME_BUILD_ID: $CCHOME_BUILD_ID" 
       - persist_to_workspace:
           root: ./
           paths:
             - BUILD_ID.env
-
   get-build-id:
     description: "Read BUILD_ID from workspace"
     steps:
@@ -33,7 +37,12 @@ commands:   # Define reusable commands
           name: Get BUILD_ID
           command: |
             echo "export BUILD_ID=$(<BUILD_ID.env)" >> $BASH_ENV
-            echo "BUILD_ID: $(<BUILD_ID.env)"
+            echo "export CCHOME_BUILD_ID=$(<BUILD_ID.env)" >> $BASH_ENV
+      - run:
+          name: Inspect IDs
+          command: |
+            echo "BUILD_ID: $BUILD_ID"
+            echo "CCHOME_BUILD_ID: $CCHOME_BUILD_ID"
 
 workflows:    # Collection of jobs orchestrated to run in a specific order
   version: 2
@@ -149,6 +158,7 @@ jobs: # Collection of commands needed to accomplish a specific task
     steps:
       - checkout
       # - aws-cli/setup
+      - set-build-id
       # - run:
       #     name: Build app
       #     command: |
@@ -160,7 +170,6 @@ jobs: # Collection of commands needed to accomplish a specific task
       #       npm rebuild node-sass
       #       npm install
       #       npm run build
-      - set-build-id
       # - run:
         #   name: Push to AWS S3
       #     command: |
@@ -189,7 +198,6 @@ jobs: # Collection of commands needed to accomplish a specific task
       # - run:
       #     name: Deploy
       #     command: |
-      #       CCHOME_BUILD_ID=$BUILD_ID
       #       .circleci/scripts/myVault.sh DEV
       #       aws s3 cp s3://adobe-cchome-build-ue1/cchome-cchome/trailhead-${SITE_NAME}/${CCHOME_BUILD_ID}.zip .
 # 
@@ -207,25 +215,65 @@ jobs: # Collection of commands needed to accomplish a specific task
       - checkout
       - aws-cli/setup
       - get-build-id
-      - run:
-          name: Promote
-          command: |
-            CCHOME_BUILD_ID=$BUILD_ID
-
-            echo "CCHOME_BUILD_ID: $CCHOME_BUILD_ID"
-            echo "SITE_NAME: $SITE_NAME"
-
-            .circleci/scripts/myVault.sh DEV
-            aws s3 cp s3://adobe-cchome-build-ue1/cchome-cchome/trailhead-${SITE_NAME}/${CCHOME_BUILD_ID}.zip .
-            aws s3 cp ${CCHOME_BUILD_ID}.zip s3://adobe-cchome-build-ue1/cchome-cchome/trailhead-${SITE_TO_PROMOTE_TO}/
-            rm -rf ${CCHOME_BUILD_ID}.zip
+      # - run:
+      #     name: Promote
+      #     command: |
+      #       .circleci/scripts/myVault.sh DEV
+      #       aws s3 cp s3://adobe-cchome-build-ue1/cchome-cchome/trailhead-${SITE_NAME}/${CCHOME_BUILD_ID}.zip .
+      #       aws s3 cp ${CCHOME_BUILD_ID}.zip s3://adobe-cchome-build-ue1/cchome-cchome/trailhead-${SITE_TO_PROMOTE_TO}/
+      #       rm -rf ${CCHOME_BUILD_ID}.zip
   deploy-stage:
     machine: true
+    environment:
+      S3_CCHOME_CCHOME_CACHE_CONTROL_INDEX: 'public, max-age=900, must-revalidate'
+      S3_CCHOME_CCHOME_CACHE_CONTROL_STATIC: 'public, max-age=31536000, immutable'
+      S3_CCHOME_CCHOME_CACHE_CONTROL_JS: 'public, max-age=31536000, immutable'
+      S3_CCHOME_CCHOME_CACHE_CONTROL_CSS: 'public, max-age=31536000, immutable'
+      SITE_NAME: devops-stage
     steps:
       - checkout
       - aws-cli/setup
-      - run: chmod -R +x $HOME/project/.circleci/scripts/
-      - run: $HOME/project/.circleci/scripts/deploy-stage.sh
+      - get-build-id
+      - run:
+          name: Download build package from S3
+          command: |
+            echo "CACHE_CONTROL_INDEX: $S3_CCHOME_CCHOME_CACHE_CONTROL_INDEX"
+            echo "CCHOME_BUILD_ID: $CCHOME_BUILD_ID"
+
+            .circleci/scripts/myVault.sh DEV
+            aws s3 cp s3://adobe-cchome-build-ue1/cchome-cchome/trailhead-${SITE_NAME}/${CCHOME_BUILD_ID}.zip .
+
+            rm -rf public
+            unzip ${CCHOME_BUILD_ID}.zip
+            rm -rf *.zip
+
+            .circleci/scripts/myVault.sh STAGE
+
+            cd public
+            aws s3 ls
+            # Upload code to Cloudfront S3 origin with Cache-Control headers
+            aws s3 sync . s3://adobe-cchome-${SITE_NAME}-ue1/static/
+
+            # Upload code to Cloudfront S3 origin with Cache-Control headers
+            aws s3 cp . s3://adobe-cchome-${SITE_NAME}-ue1/static/ --recursive \
+            --exclude "*" --include "*/index.html" --include "index.html" \
+            --cache-control "${S3_CCHOME_CCHOME_CACHE_CONTROL_INDEX}"
+
+            echo "Transferring page-data..."
+            set +x
+            aws s3 cp page-data s3://adobe-cchome-${SITE_NAME}-ue1/static/page-data/ --recursive \
+            --cache-control "${S3_CCHOME_CCHOME_CACHE_CONTROL_INDEX}"
+
+            set -x
+            aws s3 cp static s3://adobe-cchome-${SITE_NAME}-ue1/static/static/ --recursive \
+            --cache-control "${S3_CCHOME_CCHOME_CACHE_CONTROL_STATIC}"
+
+            aws s3 cp . s3://adobe-cchome-${SITE_NAME}-ue1/static/ --recursive --exclude "*" --include "*.js" \
+            --cache-control "${S3_CCHOME_CCHOME_CACHE_CONTROL_JS}"
+            
+            aws s3 cp . s3://adobe-cchome-${SITE_NAME}-ue1/static/ --recursive --exclude "*" --include "*.css" \
+            --cache-control "${S3_CCHOME_CCHOME_CACHE_CONTROL_JS}"
+
   promote-stage:
     machine: true
     steps:
